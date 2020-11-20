@@ -1,2 +1,2 @@
-# multilevel_interaction
+# Client-server app
 Багатоланкова взаємодія, організація коду, ін’єкція залежностей
