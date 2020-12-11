@@ -3,17 +3,30 @@
 package main
 
 import (
-    "log"
-		"net/http"
+	"database/sql"
+  "log"
+	"net/http"
+	"../../db"
+	"strconv"
 )
 
-const PORT = ":8080"
+func NewDbConnection() (*sql.DB, error) {
+	conn := &db.Connection {
+		DbName:     "banking",
+		User:       "ihor",
+		Host:       "localhost",
+		DisableSSL: true,
+	}
+	return conn.Open()
+}
 
-func main() {
-	log.Print("Server started on\n127.0.0.1", PORT)
+var dbCon, err = NewDbConnection()
+
+func StartServer() error {
+	log.Print("Server started on\n127.0.0.1:", PORT)
 	http.HandleFunc("/fetch", fetchAccount)
 	http.HandleFunc("/transfer", transferMoney)
-	log.Fatal(http.ListenAndServe(PORT, nil))
+	return http.ListenAndServe(":15000", nil)
 }
 
 func fetchAccount (rw http.ResponseWriter, r *http.Request) {
@@ -23,9 +36,35 @@ func fetchAccount (rw http.ResponseWriter, r *http.Request) {
 	if(!ok1 || !ok2 || !ok3) {
 		log.Fatal("not ok")
 	}
-	log.Print(id[0])
-	log.Print(balance[0])
-	log.Print(lastOperationTime[0])
+
+	rows, err := dbCon.Query("SELECT * FROM accounts WHERE id=? AND balance=? AND lastOperationTime=?", id[0], balance[0], lastOperationTime[0])
+	if err != nil { log.Fatal(err) }
+	defer rows.Close()
+	responseSTR := rowsToString(rows)
+	rw.Write([]byte(responseSTR))
+}
+
+func rowsToString(rows *sql.Rows) string {
+	result := ""
+	col := make([]string, 0)
+	col, err = rows.Columns()
+	for i := 0; i < len(col); i++ {
+		result += "\t" + col[i]
+	}
+	result += "\n"
+	counter := 0;
+	for rows.Next() {
+		counter++
+		result += strconv.Itoa(counter)
+		for i := 0; i < len(col); i++ {
+			var box string
+			rows.Scan(&box)
+			result += "\t" + box
+		}
+		result += "\n"
+	}
+	if err := rows.Err(); err != nil { log.Fatal(err) }
+	return result
 }
 
 func transferMoney (rw http.ResponseWriter, r *http.Request) {
@@ -35,7 +74,25 @@ func transferMoney (rw http.ResponseWriter, r *http.Request) {
 	if(!ok1 || !ok2 || !ok3) {
 		log.Fatal("not ok")
 	}
-	log.Print(amount[0])
-	log.Print(sender[0])
-	log.Print(receiver[0])
+
+	var balance string
+	err := dbCon.QueryRow(sender[0]).Scan(&balance)
+	if err != nil { log.Fatal(err) }
+
+	amountInt, _ := strconv.ParseInt(amount[0], 10, 64)
+	balanceInt, _ := strconv.ParseInt(balance, 10, 64)
+	if ( amountInt > balanceInt) {
+		rw.Write([]byte("insufficient funds"))
+		return
+	}
+
+	// We should do it in one querry so that money doesn't disappear due to atomary principle
+	_, err = dbCon.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?;" +
+											"UPDATE accounts SET balance = balance + ? WHERE id = ?",
+											amount[0], sender[0], amount[0], receiver[0])
+	if err != nil { 
+		rw.Write([]byte("couldn't update you balance"))
+		log.Fatal(err)
+	}
+	rw.Write([]byte("Money transfered successfully"))
 }
