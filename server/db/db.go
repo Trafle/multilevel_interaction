@@ -16,7 +16,7 @@ type Connection struct {
 
 func (c *Connection) ConnectionURL() string {
 	dbUrl := &url.URL{
-		Scheme: "postgres",
+		Scheme: "payment_system",
 		Host:   c.Host,
 		User:   url.UserPassword(c.User, c.Password),
 		Path:   c.DbName,
