@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"../../db"
 	"strconv"
+	"encoding/json"
 )
 
 func NewDbConnection() (*sql.DB, error) {
@@ -22,49 +23,73 @@ func NewDbConnection() (*sql.DB, error) {
 
 var dbCon, err = NewDbConnection()
 
+type DbDao struct{
+	db *sql.DB
+}
+
+type JSONData struct {
+	Values []float64
+	Dates []string
+}
+
+func (d *DbDao) sendJSON(sqlString string, w http.ResponseWriter) (error) {
+
+	stmt, err := d.db.Prepare(sqlString)
+	if err != nil { return err }
+	defer stmt.Close()
+
+	rows, err := stmt.Query()
+	if err != nil {	return err }
+	defer rows.Close()
+
+	values := make([]interface{}, 2)
+	scanArgs := make([]interface{}, 2)
+	for i := range values {
+		scanArgs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err := rows.Scan(scanArgs...)
+		if err != nil {	return err }
+
+		var tempDate string 
+		var tempValue float64
+		var myjson JSONData
+
+		d, dok := values[0].([]byte)
+		v, vok := values[1].(float64)
+
+		if dok {
+			tempDate = string(d)
+			if err != nil {	return err	}
+			myjson.Dates = append(myjson.Dates, tempDate)
+		}
+
+		if vok {      
+			tempValue = v 
+			myjson.Values = append(myjson.Values, tempValue)
+			log.Println(v)
+			log.Println(tempValue)
+
+		}    
+
+		err = json.NewEncoder(w).Encode(&myjson)
+		if err != nil {	return err }
+	}
+
+	return nil 
+}
+
 func StartServer() error {
 	log.Print("Server started on\n127.0.0.1:", PORT)
-	http.HandleFunc("/fetch", fetchAccount)
+	http.HandleFunc("/fetch", fetchAccounts)
 	http.HandleFunc("/transfer", transferMoney)
 	return http.ListenAndServe(":15000", nil)
 }
 
-func fetchAccount (rw http.ResponseWriter, r *http.Request) {
-	id, ok1 := r.URL.Query() ["id"]
-	balance, ok2 := r.URL.Query() ["balance"]
-	lastOperationTime, ok3 := r.URL.Query() ["lastOperationTime"]
-	if(!ok1 || !ok2 || !ok3) {
-		log.Fatal("not ok")
-	}
-
-	rows, err := dbCon.Query("SELECT * FROM accounts WHERE id=? AND balance=? AND lastOperationTime=?", id[0], balance[0], lastOperationTime[0])
-	if err != nil { log.Fatal(err) }
-	defer rows.Close()
-	responseSTR := rowsToString(rows)
-	rw.Write([]byte(responseSTR))
-}
-
-func rowsToString(rows *sql.Rows) string {
-	result := ""
-	col := make([]string, 0)
-	col, err = rows.Columns()
-	for i := 0; i < len(col); i++ {
-		result += "\t" + col[i]
-	}
-	result += "\n"
-	counter := 0;
-	for rows.Next() {
-		counter++
-		result += strconv.Itoa(counter)
-		for i := 0; i < len(col); i++ {
-			var box string
-			rows.Scan(&box)
-			result += "\t" + box
-		}
-		result += "\n"
-	}
-	if err := rows.Err(); err != nil { log.Fatal(err) }
-	return result
+func fetchAccounts (rw http.ResponseWriter, r *http.Request) {
+	dbc := DbDao{db: dbCon}
+	dbc.sendJSON("SELECT * FROM accounts;", rw)
 }
 
 func transferMoney (rw http.ResponseWriter, r *http.Request) {
