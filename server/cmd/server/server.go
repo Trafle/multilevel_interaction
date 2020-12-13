@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"../../db"
 	"strconv"
-	"encoding/json"
 )
 
 func NewDbConnection() (*sql.DB, error) {
@@ -29,7 +28,7 @@ func rowsToString(rows *sql.Rows) string {
 	col := make([]string, 0)
 	col, err = rows.Columns()
 	for i := 0; i < len(col); i++ {
-		result += "\t" + col[i]
+		result += col[i] + "\t"
 	}
 	result += "\n"
 	for rows.Next() {
@@ -49,8 +48,11 @@ func StartServer() error {
 }
 
 func fetchAccounts (rw http.ResponseWriter, r *http.Request) {
-	dbc := DbDao{db: dbCon}
-	dbc.sendJSON("SELECT * FROM accounts;", rw)
+	rows, err := dbCon.Query("SELECT * FROM accounts")
+	if err != nil { log.Fatal(err) }
+	defer rows.Close()
+	responseSTR := rowsToString(rows)
+	rw.Write([]byte(responseSTR))
 }
 
 func transferMoney (rw http.ResponseWriter, r *http.Request) {
