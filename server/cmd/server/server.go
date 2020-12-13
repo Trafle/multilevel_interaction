@@ -63,6 +63,11 @@ func transferMoney (rw http.ResponseWriter, r *http.Request) {
 	if(!ok1 || !ok2 || !ok3) {
 		log.Fatal("not ok")
 	}
+	log.Println(amount[0])
+	log.Println(sender[0])
+	log.Println(receiver[0])
+	date := time.Now()
+	log.Println(date.Format("2006.01.02 15:04:05"))
 
 	var balance string
 	err := dbCon.QueryRow(sender[0]).Scan(&balance)
@@ -74,11 +79,12 @@ func transferMoney (rw http.ResponseWriter, r *http.Request) {
 		rw.Write([]byte("insufficient funds"))
 		return
 	}
-	date := time.Now()
+
 	// We should do it in one querry so that money doesn't disappear due to atomary principle
+	
 	_, err = dbCon.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?;" +
-											"UPDATE accounts SET balance = balance + ? WHERE id = ?" +
-											"UPDATE accounts SET lastOperationTime = ? WHERE id = ? OR id = ?",
+											"UPDATE accounts SET balance = balance + ? WHERE id = ?;" +
+											"UPDATE accounts SET lastOperationTime = ? WHERE id = ? OR id = ?;",
 											amount[0], sender[0], amount[0], receiver[0], date.Format("2006.01.02 15:04:05"), sender[0], receiver[0])
 	if err != nil { 
 		rw.Write([]byte("couldn't update you balance"))
