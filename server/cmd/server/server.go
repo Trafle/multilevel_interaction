@@ -13,10 +13,10 @@ import (
 
 func NewDbConnection() (*sql.DB, error) {
 	conn := &db.Connection {
-		DbName:     "banking",
+		DbName:     "payment_system",
 		User:       "ihor",
-		Host:       "localhost",
-		DisableSSL: true,
+		Password:	"123",
+		Host:       "localhost:3306",
 	}
 	return conn.Open()
 }
