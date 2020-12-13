@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"../../db"
 	"strconv"
+	"time"
 )
 
 func NewDbConnection() (*sql.DB, error) {
@@ -73,11 +74,12 @@ func transferMoney (rw http.ResponseWriter, r *http.Request) {
 		rw.Write([]byte("insufficient funds"))
 		return
 	}
-
+	date := time.Now()
 	// We should do it in one querry so that money doesn't disappear due to atomary principle
 	_, err = dbCon.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?;" +
-											"UPDATE accounts SET balance = balance + ? WHERE id = ?",
-											amount[0], sender[0], amount[0], receiver[0])
+											"UPDATE accounts SET balance = balance + ? WHERE id = ?" +
+											"UPDATE accounts SET lastOperationTime = ? WHERE id = ? OR id = ?",
+											amount[0], sender[0], amount[0], receiver[0], date.Format("2006.01.02 15:04:05"), sender[0], receiver[0])
 	if err != nil { 
 		rw.Write([]byte("couldn't update you balance"))
 		log.Fatal(err)

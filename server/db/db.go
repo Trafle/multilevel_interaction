@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
+	_"github.com/go-sql-driver/mysql"
 )
 
 type Connection struct {
