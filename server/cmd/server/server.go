@@ -3,81 +3,41 @@
 package main
 
 import (
+	"fmt"
 	"database/sql"
   "log"
 	"net/http"
 	"../../db"
 	"strconv"
-	"encoding/json"
 )
 
 func NewDbConnection() (*sql.DB, error) {
 	conn := &db.Connection {
-		DbName:     "banking",
+		DbName:     "payment_system",
 		User:       "ihor",
-		Host:       "localhost",
-		DisableSSL: true,
+		Password:	"123",
+		Host:       "localhost:3306",
 	}
 	return conn.Open()
 }
 
 var dbCon, err = NewDbConnection()
 
-type DbDao struct{
-	db *sql.DB
-}
-
-type JSONData struct {
-	Values []float64
-	Dates []string
-}
-
-func (d *DbDao) sendJSON(sqlString string, w http.ResponseWriter) (error) {
-
-	stmt, err := d.db.Prepare(sqlString)
-	if err != nil { return err }
-	defer stmt.Close()
-
-	rows, err := stmt.Query()
-	if err != nil {	return err }
-	defer rows.Close()
-
-	values := make([]interface{}, 2)
-	scanArgs := make([]interface{}, 2)
-	for i := range values {
-		scanArgs[i] = &values[i]
+func rowsToString(rows *sql.Rows) string {
+	result := ""
+	col := make([]string, 0)
+	col, err = rows.Columns()
+	for i := 0; i < len(col); i++ {
+		result += col[i] + "\t"
 	}
-
+	result += "\n"
 	for rows.Next() {
-		err := rows.Scan(scanArgs...)
-		if err != nil {	return err }
-
-		var tempDate string 
-		var tempValue float64
-		var myjson JSONData
-
-		d, dok := values[0].([]byte)
-		v, vok := values[1].(float64)
-
-		if dok {
-			tempDate = string(d)
-			if err != nil {	return err	}
-			myjson.Dates = append(myjson.Dates, tempDate)
-		}
-
-		if vok {      
-			tempValue = v 
-			myjson.Values = append(myjson.Values, tempValue)
-			log.Println(v)
-			log.Println(tempValue)
-
-		}    
-
-		err = json.NewEncoder(w).Encode(&myjson)
-		if err != nil {	return err }
+		var id, balance, lastOperationTime string
+		rows.Scan(&id, &balance, &lastOperationTime)
+		result += fmt.Sprintf("%s\t%s\t%s\n", id, balance, lastOperationTime)
 	}
-
-	return nil 
+	if err := rows.Err(); err != nil { log.Fatal(err) }
+	return result
 }
 
 func StartServer() error {
@@ -88,8 +48,11 @@ func StartServer() error {
 }
 
 func fetchAccounts (rw http.ResponseWriter, r *http.Request) {
-	dbc := DbDao{db: dbCon}
-	dbc.sendJSON("SELECT * FROM accounts;", rw)
+	rows, err := dbCon.Query("SELECT * FROM accounts")
+	if err != nil { log.Fatal(err) }
+	defer rows.Close()
+	responseSTR := rowsToString(rows)
+	rw.Write([]byte(responseSTR))
 }
 
 func transferMoney (rw http.ResponseWriter, r *http.Request) {
