@@ -60,15 +60,9 @@ func transferMoney (rw http.ResponseWriter, r *http.Request) {
 	amount, ok1 := r.URL.Query() ["amount"]
 	sender, ok2 := r.URL.Query() ["sender"]
 	receiver, ok3 := r.URL.Query() ["receiver"]
-	if(!ok1 || !ok2 || !ok3) {
-		log.Fatal("not ok")
-	}
-	log.Println(amount[0])
-	log.Println(sender[0])
-	log.Println(receiver[0])
-	date := time.Now()
-	log.Println(date.Format("2006.01.02 15:04:05"))
 
+	if(!ok1 || !ok2 || !ok3) { log.Fatal("not ok") }
+	
 	var balance string
 	err := dbCon.QueryRow(sender[0]).Scan(&balance)
 	if err != nil { log.Fatal(err) }
@@ -79,21 +73,15 @@ func transferMoney (rw http.ResponseWriter, r *http.Request) {
 		rw.Write([]byte("insufficient funds"))
 		return
 	}
-
-	// We should do it in one querry so that money doesn't disappear due to atomary principle
-<<<<<<< HEAD
 	
-	_, err = dbCon.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?;" +
-											"UPDATE accounts SET balance = balance + ? WHERE id = ?;" +
-											"UPDATE accounts SET lastOperationTime = ? WHERE id = ? OR id = ?;",
-											amount[0], sender[0], amount[0], receiver[0], date.Format("2006.01.02 15:04:05"), sender[0], receiver[0])
-=======
-	_, err = dbCon.Exec("CALL transferMoney(?, ?, ?, ?)",
-				sender[0], receiver[0], amount[0], date.Format("2006.01.02 15:04:05"))
->>>>>>> d39ce0b81d12920d28cc77f2fe19d19697542ea5
+	// We should do it in one querry so that money doesn't disappear due to atomicity principle
+	date := time.Now()
+	_, err = dbCon.Exec("transferMoney(?, ?, ?, ?);",
+											sender[0], receiver[0], amount[0], date.Format("2006.01.02 15:04:05"))
 	if err != nil { 
 		rw.Write([]byte("couldn't update you balance"))
 		log.Fatal(err)
 	}
+	
 	rw.Write([]byte("Money transfered successfully"))
 }
