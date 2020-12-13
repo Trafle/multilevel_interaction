@@ -14,3 +14,17 @@ const client = Client("http://localhost:15000");
         console.log(`Problem listing accounts: `, err);
     }
 })();
+
+(async () => {
+    // Scenario 2: Transfer the specified amount from one account to another.
+    console.log("=== Scenario 2 ===");
+    try {
+        const transfer = await client.transferMoney(
+            1000,
+            2,
+            3
+        );
+    } catch (err) {
+        console.log(`Problem with transfer: `, err);
+    }
+})();
