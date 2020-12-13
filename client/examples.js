@@ -1,6 +1,6 @@
 const { Client } = require("./accounts/client");
 
-const client = Client("http://localhost:8080");
+const client = Client("http://localhost:15000");
 
 (async () => {
     // Scenario 1: Display a list of accounts with a balance on them and the time of the last transaction performed on the account
