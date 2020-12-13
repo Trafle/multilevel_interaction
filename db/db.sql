@@ -19,3 +19,12 @@
 DROP USER IF EXISTS ihor;
 CREATE USER IF NOT EXISTS ihor IDENTIFIED BY '123';
 GRANT ALL PRIVILEGES ON payment_system.* TO ihor;
+
+DROP PROCEDURE IF EXISTS transferMoney;
+delimiter 
+CREATE PROCEDURE transferMoney(senderId int, receiverId int, amount int, operationTime datetime)
+BEGIN
+UPDATE accounts SET balance = balance - amount WHERE id = senderId;
+UPDATE accounts SET balance = balance + amount WHERE id = receiverId;
+UPDATE accounts SET lastOperationTime = operationTime WHERE id = senderId OR id = receiverId;
+END;

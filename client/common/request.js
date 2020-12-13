@@ -17,7 +17,7 @@ module.exports = async (url, method = "GET", reqData) => {
       res.on("data", (chunk) => {
         data.push(chunk);
       });
-      res.on("end", () => resolve(JSON.parse(data)));
+      res.on("end", () => resolve(data.toString()));
     });
     req.on("error", reject);
 
