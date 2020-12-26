@@ -77,8 +77,9 @@ func transferMoney(rw http.ResponseWriter, r *http.Request) {
 	err := db.TransferMoneydb(sender[0], receiver[0], amount[0], date, dbCon)
 
 	if err != nil {
-		rw.Write([]byte("couldn't update you balance"))
-		log.Fatal(err)
+		rw.Write([]byte(err.Error()))
+		log.Println(err)
+		return
 	}
 	rw.Write([]byte("Money transfered successfully"))
 }

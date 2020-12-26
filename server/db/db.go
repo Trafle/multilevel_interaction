@@ -35,7 +35,7 @@ func TransferMoneydb(sender, receiver, amount, date string, dbCon *sql.DB) error
 	balanceInt, _ := strconv.ParseInt(balance, 10, 64)
 
 	if amountInt > balanceInt {
-		return errors.New("insufficient funds")
+		return errors.New("Transfer failed: insufficient funds")
 	}
 	// We should do it in one querry so that money doesn't disappear due to atomicity principle
 	sqlcom := "CALL transferMoney (" + sender + ", " + receiver + ", " + amount + ", '" + date + "');"
