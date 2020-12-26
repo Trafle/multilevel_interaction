@@ -4,11 +4,9 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"../../db"
@@ -28,44 +26,23 @@ func NewDbConnection() (*sql.DB, error) {
 
 var dbCon, err = NewDbConnection()
 
-func makeStructJSON(rows *sql.Rows) (map[string][]interface{}, error) {
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
+func rowsToString(rows *sql.Rows) string {
+	result := ""
+	col := make([]string, 0)
+	col, err = rows.Columns()
+	for i := 0; i < len(col); i++ {
+		result += col[i] + "\t"
 	}
-
-	count := len(columns)
-	values := make([]interface{}, count)
-	scanArgs := make([]interface{}, count)
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
-
-	masterData := make(map[string][]interface{})
-
+	result += "\n"
 	for rows.Next() {
-
-		err := rows.Scan(scanArgs...)
-		if err != nil {
-			return nil, err
-		}
-		for i, v := range values {
-
-			x := v.([]byte)
-
-			if nx, ok := strconv.ParseFloat(string(x), 64); ok == nil {
-				masterData[columns[i]] = append(masterData[columns[i]], nx)
-			} else if b, ok := strconv.ParseBool(string(x)); ok == nil {
-				masterData[columns[i]] = append(masterData[columns[i]], b)
-			} else if "string" == fmt.Sprintf("%T", string(x)) {
-				masterData[columns[i]] = append(masterData[columns[i]], string(x))
-			} else {
-				fmt.Printf("Failed on if for type %T of %v\n", x, x)
-			}
-
-		}
+		var id, balance, lastOperationTime string
+		rows.Scan(&id, &balance, &lastOperationTime)
+		result += fmt.Sprintf("%s\t%s\t%s\n", id, balance, lastOperationTime)
 	}
-	return masterData, nil
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+	return result
 }
 
 // StartServer func
@@ -78,17 +55,13 @@ func StartServer() error {
 
 func fetchAccounts(rw http.ResponseWriter, r *http.Request) {
 	rows, err := db.FetchAccountsdb(dbCon)
-	masterData, err := makeStructJSON(rows)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("rows here!!!")
 
-	rw.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(masterData)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	masterData := rowsToString(rows)
+	rw.Write([]byte(masterData))
 }
 
 func transferMoney(rw http.ResponseWriter, r *http.Request) {

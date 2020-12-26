@@ -49,6 +49,5 @@ func FetchAccountsdb(dbCon *sql.DB) (*sql.Rows, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	return rows, nil
 }
